@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Villa Serena — Interactive Property Studio</title>
+<meta name="description" content="Explore finishes, fixtures and atmospheres of Villa Serena. Click any surface in the rendering to preview materials." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ------------------------------------------------------------------ */
+/*  Design tokens                                                      */
+/* ------------------------------------------------------------------ */
+:root{
+  --ink:        #11141A;
+  --ink-2:      #1C2027;
+  --paper:      #F4EFE6;
+  --paper-2:    #EDE5D7;
+  --soft:       #FAF6EE;
+  --brass:      #B6915A;
+  --brass-dim:  #8C6E40;
+  --taupe:      #A39C92;
+  --line:       rgba(17,20,26,0.10);
+  --line-strong:rgba(17,20,26,0.22);
+  --shadow:     0 24px 60px -28px rgba(17,20,26,0.45),
+                0 4px 16px -6px rgba(17,20,26,0.18);
+  --serif:      'Cormorant Garamond', 'Times New Roman', serif;
+  --sans:       'Inter', system-ui, -apple-system, sans-serif;
+  --mono:       'JetBrains Mono', ui-monospace, monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:400;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+ul{list-style:none}
+img{display:block;max-width:100%}
+
+/* ------------------------------------------------------------------ */
+/*  Top bar                                                            */
+/* ------------------------------------------------------------------ */
+.site-header{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:48px;
+  padding:22px 36px;
+  border-bottom:1px solid var(--line);
+  background:var(--soft);
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(8px);
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{
+  width:34px;height:34px;border:1px solid var(--ink);
+  display:grid;place-items:center;
+  position:relative;
+}
+.brand-mark::before,
+.brand-mark::after{
+  content:'';position:absolute;inset:6px;border:1px solid var(--ink);
+}
+.brand-mark::after{transform:rotate(45deg);inset:11px}
+.brand-name{
+  font-family:var(--serif);font-size:20px;letter-spacing:.18em;
+  font-weight:500;
+}
+.property-summary{text-align:center}
+.property-summary h1{
+  font-family:var(--serif);font-weight:500;font-style:italic;
+  font-size:22px;letter-spacing:.01em;color:var(--ink);
+}
+.property-summary .stats{
+  margin-top:4px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);opacity:.7;
+}
+.header-actions{display:flex;gap:10px;align-items:center}
+.btn{
+  padding:10px 18px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid var(--line-strong);background:transparent;color:var(--ink);
+  transition:.2s ease;font-weight:500;
+}
+.btn:hover{background:var(--ink);color:var(--soft);border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--soft);border-color:var(--ink)}
+.btn.primary:hover{background:var(--brass-dim);border-color:var(--brass-dim)}
+.btn.ghost{padding:10px 12px;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--paper-2);color:var(--ink);border-color:transparent}
+
+/* ------------------------------------------------------------------ */
+/*  App grid                                                           */
+/* ------------------------------------------------------------------ */
+.app{
+  display:grid;
+  grid-template-columns:280px 1fr 360px;
+  gap:0;
+  height:calc(100vh - 81px);
+  min-height:680px;
+}
+
+/* ----- Left rail ----- */
+.room-rail{
+  border-right:1px solid var(--line);
+  background:var(--soft);
+  padding:28px 20px 20px;
+  overflow-y:auto;
+}
+.rail-eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--ink-2);opacity:.55;
+  margin-bottom:14px;
+}
+.rail-title{
+  font-family:var(--serif);font-size:30px;line-height:1.05;font-weight:500;
+  margin-bottom:24px;
+}
+.rail-title em{color:var(--brass);font-style:italic}
+.room-list{display:flex;flex-direction:column;gap:6px;margin-bottom:36px}
+.room-item{
+  display:grid;grid-template-columns:56px 1fr auto;
+  gap:12px;align-items:center;
+  padding:8px;border:1px solid transparent;cursor:pointer;
+  transition:.2s ease;
+}
+.room-item:hover{background:var(--paper-2)}
+.room-item.active{background:var(--paper-2);border-color:var(--line)}
+.room-thumb{
+  width:56px;height:56px;background:#d8cdb9;position:relative;overflow:hidden;
+}
+.room-thumb img{width:100%;height:100%;object-fit:cover;filter:saturate(.85) brightness(.95)}
+.room-thumb::after{
+  content:'';position:absolute;inset:0;border:1px solid rgba(17,20,26,0.08);
+}
+.room-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.room-name{
+  font-family:var(--serif);font-size:16px;font-weight:500;line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.room-meta .room-dim{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--ink-2);opacity:.55;
+}
+.room-index{
+  font-family:var(--mono);font-size:10px;color:var(--ink-2);opacity:.45;
+}
+.property-card{
+  margin-top:auto;padding:16px;border:1px solid var(--line);
+  background:var(--paper);
+}
+.property-card .label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-2);opacity:.55;margin-bottom:6px;
+}
+.property-card .price{
+  font-family:var(--serif);font-size:26px;font-weight:500;line-height:1;
+}
+.property-card .addr{
+  margin-top:8px;font-size:12px;color:var(--ink-2);opacity:.75;line-height:1.5;
+}
+.property-card .pill-row{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.pill{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  padding:4px 8px;border:1px solid var(--line-strong);color:var(--ink-2);
+}
+
+/* ----- Center stage ----- */
+.stage{
+  display:flex;flex-direction:column;background:var(--paper);
+  position:relative;overflow:hidden;
+}
+.stage-head{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding:28px 36px 14px;
+}
+.stage-head .left h2{
+  font-family:var(--serif);font-size:42px;font-weight:500;line-height:1;letter-spacing:-.005em;
+}
+.stage-head .left .crumb{
+  font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--brass-dim);margin-bottom:10px;
+}
+.stage-head .left .room-sub{
+  margin-top:10px;font-size:13px;color:var(--ink-2);opacity:.7;max-width:480px;line-height:1.55;
+}
+.stage-head .right{display:flex;gap:6px;align-items:center}
+.toggle{
+  display:flex;border:1px solid var(--line-strong);
+}
+.toggle button{
+  padding:9px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  border-right:1px solid var(--line-strong);color:var(--ink-2);
+}
+.toggle button:last-child{border-right:0}
+.toggle button.active{background:var(--ink);color:var(--soft)}
+
+.rendering-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:8px 36px 36px;position:relative;min-height:0;
+}
+.rendering{
+  position:relative;max-width:100%;max-height:100%;
+  aspect-ratio:1/1;width:auto;height:100%;
+  box-shadow:var(--shadow);
+  background:#000;
+}
+.rendering img.base{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  user-select:none;-webkit-user-drag:none;
+}
+.zones{
+  position:absolute;inset:0;
+  pointer-events:none;
+}
+.zone-poly{
+  position:absolute;
+  pointer-events:auto;
+  cursor:pointer;
+  outline:1px dashed transparent;
+  transition:outline-color .25s ease, background .25s ease;
+}
+.zone-poly:hover{outline-color:var(--brass)}
+.zone-poly.selected{outline:2px solid var(--brass)}
+.zone-poly .zone-tag{
+  position:absolute;bottom:6px;left:6px;
+  background:rgba(17,20,26,.85);color:var(--soft);
+  padding:4px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-family:var(--mono);opacity:0;transform:translateY(4px);transition:.2s ease;
+}
+.zone-poly:hover .zone-tag,
+.zone-poly.selected .zone-tag{opacity:1;transform:translateY(0)}
+.zone-hint{
+  position:absolute;top:14px;left:14px;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(17,20,26,.78);color:var(--soft);
+  padding:8px 14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-family:var(--mono);backdrop-filter:blur(4px);
+  pointer-events:none;
+}
+.zone-hint .dot{
+  width:8px;height:8px;border-radius:50%;background:var(--brass);
+  animation:pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+
+/* material overlay */
+.material-layer{
+  position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;
+}
+.material-fill{
+  position:absolute;pointer-events:none;
+  transition:opacity .35s ease, background .35s ease;
+  opacity:.92;
+}
+.material-fill::before{
+  content:'';position:absolute;inset:0;
+  background:inherit;mix-blend-mode:normal;
+}
+.material-fill::after{
+  content:'';position:absolute;inset:0;
+  background-image:inherit;mix-blend-mode:overlay;opacity:.55;
+}
+
+.stage-foot{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 36px 24px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.1em;color:var(--ink-2);opacity:.65;text-transform:uppercase;
+}
+.stage-foot .legend{display:flex;gap:18px;align-items:center}
+.legend-dot{width:8px;height:8px;background:var(--brass);display:inline-block;margin-right:6px;vertical-align:middle}
+
+/* ----- Right panel ----- */
+.materials-panel{
+  border-left:1px solid var(--line);
+  background:var(--soft);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.panel-head{padding:26px 24px 18px;border-bottom:1px solid var(--line)}
+.panel-eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--brass-dim);margin-bottom:8px;
+}
+.panel-title{
+  font-family:var(--serif);font-size:30px;line-height:1.05;font-weight:500;
+}
+.panel-title em{font-style:italic;color:var(--brass)}
+.panel-hint{
+  margin-top:10px;font-size:12px;color:var(--ink-2);opacity:.7;line-height:1.55;
+}
+.tabs{
+  display:flex;gap:0;padding:0 24px;border-bottom:1px solid var(--line);
+  overflow-x:auto;
+}
+.tab{
+  padding:12px 14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-family:var(--mono);color:var(--ink-2);opacity:.55;border-bottom:2px solid transparent;
+  white-space:nowrap;
+}
+.tab.active{opacity:1;color:var(--ink);border-bottom-color:var(--brass)}
+.tab:disabled{opacity:.25;cursor:not-allowed}
+
+.panel-body{flex:1;overflow-y:auto;padding:18px 24px 24px}
+.material-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.material{
+  border:1px solid var(--line);
+  background:var(--paper);
+  padding:0;
+  text-align:left;
+  display:flex;flex-direction:column;
+  transition:.2s ease;position:relative;
+  overflow:hidden;
+}
+.material:hover{border-color:var(--ink);transform:translateY(-1px)}
+.material.selected{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+.material .swatch{
+  height:96px;position:relative;overflow:hidden;
+}
+.material .swatch::after{
+  content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(17,20,26,0.06);
+}
+.material .name{
+  padding:10px 12px;font-family:var(--serif);font-size:15px;font-weight:500;line-height:1.2;
+}
+.material .tag{
+  padding:0 12px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-2);opacity:.55;
+}
+.material .check{
+  position:absolute;top:8px;right:8px;
+  width:18px;height:18px;background:var(--brass);color:var(--soft);
+  display:grid;place-items:center;font-size:11px;opacity:0;transform:scale(.6);
+  transition:.2s ease;
+}
+.material.selected .check{opacity:1;transform:scale(1)}
+
+.empty-state{
+  padding:36px 12px;text-align:center;color:var(--ink-2);opacity:.55;
+  font-size:13px;line-height:1.55;
+}
+.empty-state .icon{
+  font-family:var(--serif);font-size:48px;color:var(--brass);opacity:.7;line-height:1;margin-bottom:14px;
+}
+
+/* summary block */
+.summary{
+  border-top:1px solid var(--line);
+  padding:18px 24px 22px;background:var(--paper-2);
+}
+.summary h4{
+  font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ink-2);opacity:.6;margin-bottom:12px;
+}
+.selection-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.selection-row{
+  display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;
+  font-size:12px;padding:6px 0;border-bottom:1px dashed var(--line);
+}
+.selection-row:last-child{border-bottom:0}
+.swatch-mini{width:18px;height:18px;border:1px solid var(--line-strong)}
+.selection-row .label{font-family:var(--serif);font-size:14px}
+.selection-row .clear{
+  font-family:var(--mono);font-size:10px;color:var(--ink-2);opacity:.55;letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.selection-row .clear:hover{color:var(--ink);opacity:1}
+
+.summary-actions{display:flex;gap:8px}
+.summary-actions .btn{flex:1;padding:11px;font-size:11px}
+
+/* toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translate(-50%, 24px);
+  background:var(--ink);color:var(--soft);
+  padding:12px 22px;font-size:12px;letter-spacing:.1em;
+  font-family:var(--mono);text-transform:uppercase;
+  opacity:0;pointer-events:none;transition:.3s ease;z-index:100;
+  box-shadow:var(--shadow);
+}
+.toast.show{opacity:1;transform:translate(-50%, 0)}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive                                                         */
+/* ------------------------------------------------------------------ */
+@media (max-width:1180px){
+  .app{grid-template-columns:240px 1fr 320px}
+  .stage-head .left h2{font-size:34px}
+  .panel-title{font-size:26px}
+  .rail-title{font-size:26px}
+}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;height:auto}
+  .room-rail{border-right:0;border-bottom:1px solid var(--line);max-height:200px}
+  .materials-panel{border-left:0;border-top:1px solid var(--line)}
+  .site-header{grid-template-columns:1fr;gap:14px;text-align:left}
+  .header-actions{justify-content:flex-start}
+  .property-summary{text-align:left}
+  .stage-head{padding:18px 18px 10px;flex-direction:column;align-items:flex-start;gap:14px}
+  .rendering-wrap{padding:8px 18px 18px}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-name">VILLA SERENA</span>
+  </div>
+  <div class="property-summary">
+    <h1>Interactive Property Studio</h1>
+    <div class="stats">Listing №&nbsp;VS—0427 · Costa Smeralda, Sardinia</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn ghost" id="resetAll">Reset</button>
+    <button class="btn" id="saveConfig">Save Configuration</button>
+    <button class="btn primary" id="scheduleView">Schedule a Viewing</button>
+  </div>
+</header>
+
+<main class="app">
+
+  <!-- LEFT: room rail -->
+  <aside class="room-rail">
+    <div class="rail-eyebrow">The Property</div>
+    <h2 class="rail-title">Six <em>considered</em> spaces.</h2>
+    <ul class="room-list" id="roomList"></ul>
+
+    <div class="property-card">
+      <div class="label">Asking</div>
+      <div class="price">€2,450,000</div>
+      <div class="addr">Località Pitrizza 12<br>07021 Costa Smeralda SS<br>Italy</div>
+      <div class="pill-row">
+        <span class="pill">5 BD</span>
+        <span class="pill">4.5 BA</span>
+        <span class="pill">4,820 sqft</span>
+        <span class="pill">0.6 ha</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER: stage -->
+  <section class="stage">
+    <div class="stage-head">
+      <div class="left">
+        <div class="crumb" id="roomCrumb">Space 01 of 06</div>
+        <h2 id="roomTitle">Living &amp; Dining Pavilion</h2>
+        <p class="room-sub" id="roomSub">A double-height entertaining space finished in travertine, oak and brushed brass. South-facing sliding glass dissolves the boundary to the garden and sea beyond.</p>
+      </div>
+      <div class="right">
+        <div class="toggle" id="viewToggle">
+          <button class="active" data-view="design">Design</button>
+          <button data-view="before">Original</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rendering-wrap">
+      <div class="rendering" id="rendering">
+        <img class="base" id="baseImg" alt="" />
+        <div class="zone-hint" id="zoneHint">
+          <span class="dot"></span><span id="hintText">Click any surface to preview a finish</span>
+        </div>
+        <div class="zones" id="zones"></div>
+        <div class="material-layer" id="materialLayer"></div>
+      </div>
+    </div>
+
+    <div class="stage-foot">
+      <div class="legend"><span><span class="legend-dot"></span>Clickable surface</span></div>
+      <div id="coordDisplay">—</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: materials panel -->
+  <aside class="materials-panel">
+    <div class="panel-head">
+      <div class="panel-eyebrow">Finish Library</div>
+      <h3 class="panel-title" id="panelTitle">Select a <em>surface</em></h3>
+      <p class="panel-hint" id="panelHint">Click any surface in the rendering to explore materials curated for this property.</p>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="panel-body" id="panelBody">
+      <div class="empty-state">
+        <div class="icon">⌖</div>
+        <div><strong>No surface selected.</strong><br>Click a floor, wall or piece of furniture in the rendering to preview finishes.</div>
+      </div>
+    </div>
+    <div class="summary" id="summary">
+      <h4>Your selections</h4>
+      <div id="selectionListWrap">
+        <div class="selection-row" style="opacity:.55;font-style:italic">
+          <div></div><div class="label">No selections yet</div><div></div>
+        </div>
+      </div>
+      <div class="summary-actions" style="margin-top:12px">
+        <button class="btn" id="exportPdf">Export PDF</button>
+        <button class="btn primary" id="requestQuote">Request Quote</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================================================================
+   VILLA SERENA — interactive property studio
+   ================================================================== */
+
+/* ---------- 1.  ROOMS  ------------------------------------------- */
+const ROOMS = [
+  {
+    id: 'living',
+    title: 'Living & Dining Pavilion',
+    sub: 'A double-height entertaining space finished in travertine, oak and brushed brass. South-facing sliding glass dissolves the boundary to the garden and sea beyond.',
+    img: 'assets/rooms/room1.jpg',
+    dim: '78 m² · double height',
+    zones: [
+      { id:'floor',   label:'Travertine Floor',  cat:'stone',  poly:'polygon(0% 50%,100% 50%,100% 100%,0% 100%)' },
+      { id:'wall-l',  label:'Cream Plaster Wall',cat:'paint',  poly:'polygon(0% 0%,62% 0%,68% 38%,0% 55%)' },
+      { id:'wall-r',  label:'Oak Slat Accent',    cat:'wood',   poly:'polygon(60% 0%,100% 0%,100% 60%,65% 45%)' },
+      { id:'sofa',    label:'Linen Sofa',         cat:'fabric', poly:'polygon(2% 38%,30% 38%,30% 70%,2% 70%)' },
+      { id:'table',   label:'Marble Dining Table',cat:'stone',  poly:'polygon(28% 60%,80% 60%,80% 92%,28% 92%)' },
+      { id:'chairs',  label:'Wooden Dining Chairs',cat:'wood',  poly:'polygon(34% 78%,68% 78%,68% 99%,34% 99%)' },
+    ]
+  },
+  {
+    id: 'kitchen',
+    title: 'Open Kitchen & Breakfast Room',
+    sub: 'A linear kitchen in light oak veneer, anchored by a Calacatta island and framed by floor-to-ceiling storage in matte lacquer.',
+    img: 'assets/rooms/room2.jpg',
+    dim: '42 m² · linear galley',
+    zones: [
+      { id:'floor',   label:'Stone Floor',         cat:'stone',  poly:'polygon(0% 55%,100% 55%,100% 100%,0% 100%)' },
+      { id:'wall',    label:'Plaster Wall',        cat:'paint',  poly:'polygon(0% 0%,100% 0%,100% 55%,0% 55%)' },
+      { id:'cabinets',label:'Oak Cabinetry',       cat:'wood',   poly:'polygon(0% 25%,55% 25%,55% 70%,0% 70%)' },
+      { id:'counter', label:'Marble Counter',      cat:'stone',  poly:'polygon(0% 18%,55% 18%,55% 32%,0% 32%)' },
+      { id:'table',   label:'Marble Dining Table', cat:'stone',  poly:'polygon(40% 55%,90% 55%,90% 90%,40% 90%)' },
+      { id:'chairs',  label:'Cane Dining Chairs',  cat:'wood',   poly:'polygon(48% 75%,86% 75%,86% 99%,48% 99%)' },
+    ]
+  },
+  {
+    id: 'master',
+    title: 'Master Suite',
+    sub: 'A quiet retreat with timber flooring, full-height linen curtains, and a private terrace overlooking the bay.',
+    img: 'assets/rooms/room3.jpg',
+    dim: '52 m² · ensuite',
+    zones: [
+      { id:'floor',   label:'Timber Floor',     cat:'wood',   poly:'polygon(0% 55%,100% 55%,100% 100%,0% 100%)' },
+      { id:'wall',    label:'Linen Wall',       cat:'paint',  poly:'polygon(0% 0%,100% 0%,100% 55%,0% 55%)' },
+      { id:'bed',     label:'Headboard Fabric', cat:'fabric', poly:'polygon(8% 40%,80% 40%,80% 80%,8% 80%)' },
+      { id:'bedding', label:'Linen Bedding',    cat:'fabric', poly:'polygon(8% 55%,80% 55%,80% 85%,8% 85%)' },
+      { id:'rug',     label:'Wool Area Rug',    cat:'fabric', poly:'polygon(15% 80%,75% 80%,75% 99%,15% 99%)' },
+      { id:'curtain', label:'Linen Curtain',    cat:'fabric', poly:'polygon(0% 0%,30% 0%,30% 65%,0% 65%)' },
+    ]
+  },
+  {
+    id: 'bath',
+    title: 'Principal Bathroom',
+    sub: 'Book-matched travertine, a freestanding stone tub and unlacquered brassware; designed as a spa rather than a bathroom.',
+    img: 'assets/rooms/room4.jpg',
+    dim: '24 m² · wet room',
+    zones: [
+      { id:'floor',   label:'Travertine Floor',  cat:'stone',  poly:'polygon(0% 45%,100% 45%,100% 100%,0% 100%)' },
+      { id:'wall',    label:'Plaster Wall',      cat:'paint',  poly:'polygon(0% 0%,100% 0%,100% 45%,0% 45%)' },
+      { id:'vanity',  label:'Stone Vanity',      cat:'stone',  poly:'polygon(8% 30%,55% 30%,55% 60%,8% 60%)' },
+      { id:'tub',     label:'Freestanding Tub',  cat:'stone',  poly:'polygon(50% 60%,92% 60%,92% 88%,50% 88%)' },
+      { id:'fittings',label:'Brassware',         cat:'metal',  poly:'polygon(78% 25%,92% 25%,92% 40%,78% 40%)' },
+    ]
+  },
+  {
+    id: 'study',
+    title: 'Study & Library',
+    sub: 'Floor-to-ceiling oak shelves, a walnut writing desk and a leather club chair positioned to catch the morning light.',
+    img: 'assets/rooms/room5.jpg',
+    dim: '32 m² · north-facing',
+    zones: [
+      { id:'floor',   label:'Oak Floor',          cat:'wood',   poly:'polygon(0% 55%,100% 55%,100% 100%,0% 100%)' },
+      { id:'wall',    label:'Limewashed Wall',    cat:'paint',  poly:'polygon(0% 0%,100% 0%,100% 55%,0% 55%)' },
+      { id:'shelves', label:'Oak Library Shelves',cat:'wood',   poly:'polygon(0% 0%,55% 0%,55% 70%,0% 70%)' },
+      { id:'desk',    label:'Walnut Desk',        cat:'wood',   poly:'polygon(8% 50%,55% 50%,55% 78%,8% 78%)' },
+      { id:'chair',   label:'Leather Chair',      cat:'fabric', poly:'polygon(62% 55%,92% 55%,92% 92%,62% 92%)' },
+    ]
+  },
+  {
+    id: 'terrace',
+    title: 'Sea Terrace & Loggia',
+    sub: 'An external entertaining terrace in honed limestone with a teak pergola, designed for nine-month outdoor living.',
+    img: 'assets/rooms/room6.jpg',
+    dim: '64 m² · covered loggia',
+    zones: [
+      { id:'floor',   label:'Limestone Floor',   cat:'stone',  poly:'polygon(0% 40%,100% 40%,100% 100%,0% 100%)' },
+      { id:'ceiling', label:'Teak Pergola',      cat:'wood',   poly:'polygon(0% 0%,100% 0%,100% 25%,0% 25%)' },
+      { id:'wall',    label:'Rendered Wall',     cat:'paint',  poly:'polygon(0% 0%,32% 0%,32% 75%,0% 75%)' },
+      { id:'lounge',  label:'Outdoor Lounge',    cat:'fabric', poly:'polygon(35% 60%,82% 60%,82% 92%,35% 92%)' },
+      { id:'planter', label:'Stone Planter',     cat:'stone',  poly:'polygon(0% 75%,22% 75%,22% 99%,0% 99%)' },
+    ]
+  },
+];
+
+/* ---------- 2.  MATERIAL LIBRARY  -------------------------------- */
+const MATERIALS = {
+  wood: [
+    { id:'oak-natural',  name:'Natural Oak',      hex:'#C9A878', grain:'wood-1', tag:'Quartersawn', price:'€280 / m²' },
+    { id:'oak-smoked',   name:'Smoked Oak',       hex:'#7A5A3E', grain:'wood-2', tag:'Fumed',      price:'€340 / m²' },
+    { id:'walnut',       name:'American Walnut',  hex:'#4E2E1E', grain:'wood-3', tag:'Figured',    price:'€520 / m²' },
+    { id:'teak',         name:'Burma Teak',       hex:'#9B6E47', grain:'wood-4', tag:'Oiled',      price:'€610 / m²' },
+    { id:'ebony',        name:'Macassar Ebony',   hex:'#2A1B14', grain:'wood-5', tag:'Stripled',   price:'€1,250 / m²' },
+    { id:'ash-white',    name:'White Ash',        hex:'#DCC8A5', grain:'wood-6', tag:'Bleached',   price:'€240 / m²' },
+  ],
+  stone: [
+    { id:'travertine',   name:'Roman Travertine',  hex:'#D8C39A', vein:'stone-1', tag:'Honed',     price:'€420 / m²' },
+    { id:'carrara',      name:'Carrara Marble',    hex:'#E8E4DA', vein:'stone-2', tag:'Polished',  price:'€380 / m²' },
+    { id:'calacatta',    name:'Calacatta Oro',     hex:'#EFE7D2', vein:'stone-3', tag:'Book-match',price:'€640 / m²' },
+    { id:'emperador',    name:'Emperador Dark',    hex:'#3E2D22', vein:'stone-4', tag:'Polished',  price:'€460 / m²' },
+    { id:'limestone',    name:'Honed Limestone',   hex:'#C7B79A', grain:'stone-5',tag:'Sealed',    price:'€290 / m²' },
+    { id:'terrazzo',     name:'Venetian Terrazzo', hex:'#D9CDB5', grain:'stone-6',tag:'Resin-bound',price:'€520 / m²' },
+  ],
+  paint: [
+    { id:'paint-ivory',  name:'Ivory White',   hex:'#F0E9D9', tag:'Farrow · Slipper',   price:'€45 / m²' },
+    { id:'paint-cream',  name:'Cream Stone',   hex:'#E6D9BE', tag:'Farrow · Limewash',  price:'€48 / m²' },
+    { id:'paint-sage',   name:'Sage Vert',     hex:'#9AA88C', tag:'Farrow · Card Room', price:'€48 / m²' },
+    { id:'paint-navy',   name:'Inchyra Blue',  hex:'#2C3E50', tag:'Farrow · Inchyra',   price:'€48 / m²' },
+    { id:'paint-char',   name:'Smoked Charcoal',hex:'#3A3A3A',tag:'Farrow · Railings',  price:'€48 / m²' },
+    { id:'paint-blush',  name:'Pink Ground',   hex:'#E8C9BC', tag:'Farrow · Pink Ground',price:'€48 / m²' },
+    { id:'paint-slate',  name:'Slate Blue',    hex:'#5D6B7A', tag:'Farrow · De Nimes',  price:'€48 / m²' },
+    { id:'paint-clay',   name:'Warm Clay',     hex:'#B89479', tag:'Farrow · Red Earth', price:'€48 / m²' },
+  ],
+  fabric: [
+    { id:'linen-natural',name:'Natural Linen',   hex:'#D9CDB1', grain:'fabric-1', tag:'Belgian',     price:'€180 / m' },
+    { id:'linen-stone',  name:'Stone Linen',     hex:'#BFB29A', grain:'fabric-2', tag:'Heavy weight',price:'€220 / m' },
+    { id:'velvet-forest',name:'Forest Velvet',   hex:'#2C4438', grain:'fabric-3', tag:'Italian',     price:'€420 / m' },
+    { id:'velvet-rust',  name:'Burnt Orange Velvet',hex:'#A04B2C',grain:'fabric-4',tag:'Mohair',     price:'€480 / m' },
+    { id:'boucle-cream', name:'Cream Bouclé',    hex:'#E8DFC9', grain:'fabric-5', tag:'Wool blend',  price:'€260 / m' },
+    { id:'leather-cognac',name:'Cognac Leather', hex:'#7A3D24', grain:'fabric-6', tag:'Full-grain',  price:'€640 / m' },
+    { id:'leather-black',name:'Onyx Leather',    hex:'#1E1A18', grain:'fabric-7', tag:'Aniline',     price:'€720 / m' },
+    { id:'wool-charcoal',name:'Charcoal Wool',   hex:'#3D3A36', grain:'fabric-8', tag:'Hand-loomed', price:'€340 / m²' },
+  ],
+  metal: [
+    { id:'brass-aged',   name:'Aged Brass',      hex:'#9A7A4A', grain:'metal-1', tag:'Unlacquered', price:'€120 / pc' },
+    { id:'brass-polished',name:'Polished Brass', hex:'#C9A878', grain:'metal-2', tag:'Lacquered',  price:'€140 / pc' },
+    { id:'bronze',       name:'Oil-rubbed Bronze',hex:'#4E3A28',grain:'metal-3', tag:'Living finish',price:'€160 / pc' },
+    { id:'chrome',       name:'Polished Chrome', hex:'#C9C9C9', grain:'metal-4', tag:'Mirror',      price:'€85 / pc' },
+  ]
+};
+
+/* category → display label */
+const CAT_LABEL = { wood:'Timber', stone:'Stone & Marble', paint:'Paint & Plaster', fabric:'Textile & Leather', metal:'Metalwork' };
+
+/* SVG-pattern factories (one per "grain" key, reused across materials) */
+const PATTERNS = {
+  'wood-1': `repeating-linear-gradient(90deg, transparent 0 6px, rgba(0,0,0,.08) 6px 7px, transparent 7px 22px, rgba(255,255,255,.06) 22px 23px)`,
+  'wood-2': `repeating-linear-gradient(92deg, transparent 0 8px, rgba(0,0,0,.12) 8px 9px, transparent 9px 26px, rgba(255,255,255,.04) 26px 27px)`,
+  'wood-3': `repeating-linear-gradient(88deg, transparent 0 10px, rgba(0,0,0,.18) 10px 11px, transparent 11px 32px, rgba(255,255,255,.05) 32px 33px)`,
+  'wood-4': `repeating-linear-gradient(95deg, transparent 0 9px, rgba(0,0,0,.10) 9px 10px, transparent 10px 28px, rgba(255,255,255,.07) 28px 29px)`,
+  'wood-5': `repeating-linear-gradient(85deg, transparent 0 12px, rgba(0,0,0,.22) 12px 13px, transparent 13px 38px, rgba(255,255,255,.04) 38px 39px)`,
+  'wood-6': `repeating-linear-gradient(90deg, transparent 0 7px, rgba(0,0,0,.06) 7px 8px, transparent 8px 24px, rgba(255,255,255,.08) 24px 25px)`,
+  'stone-1':`repeating-linear-gradient(85deg, transparent 0 24px, rgba(120,90,50,.10) 24px 25px, transparent 25px 60px), repeating-linear-gradient(8deg, transparent 0 40px, rgba(120,90,50,.06) 40px 41px)`,
+  'stone-2':`repeating-linear-gradient(72deg, transparent 0 30px, rgba(60,60,80,.12) 30px 31px, transparent 31px 90px), repeating-linear-gradient(15deg, transparent 0 50px, rgba(60,60,80,.08) 50px 51px)`,
+  'stone-3':`repeating-linear-gradient(68deg, transparent 0 40px, rgba(180,140,80,.18) 40px 42px, transparent 42px 110px), repeating-linear-gradient(20deg, transparent 0 60px, rgba(180,140,80,.10) 60px 62px)`,
+  'stone-4':`repeating-linear-gradient(70deg, transparent 0 35px, rgba(255,240,200,.10) 35px 36px, transparent 36px 95px), repeating-linear-gradient(12deg, transparent 0 55px, rgba(255,240,200,.06) 55px 56px)`,
+  'stone-5':`repeating-linear-gradient(80deg, transparent 0 22px, rgba(80,60,30,.10) 22px 23px, transparent 23px 50px)`,
+  'stone-6':`radial-gradient(circle at 18% 22%, rgba(80,50,30,.20) 0 3px, transparent 4px), radial-gradient(circle at 72% 14%, rgba(120,80,40,.18) 0 2px, transparent 3px), radial-gradient(circle at 42% 68%, rgba(160,120,80,.16) 0 2px, transparent 3px), radial-gradient(circle at 88% 72%, rgba(80,50,30,.18) 0 3px, transparent 4px), radial-gradient(circle at 28% 88%, rgba(120,80,40,.14) 0 2px, transparent 3px)`,
+  'fabric-1':`repeating-linear-gradient(45deg, transparent 0 2px, rgba(0,0,0,.05) 2px 3px), repeating-linear-gradient(-45deg, transparent 0 2px, rgba(0,0,0,.04) 2px 3px)`,
+  'fabric-2':`repeating-linear-gradient(45deg, transparent 0 2px, rgba(0,0,0,.07) 2px 3px), repeating-linear-gradient(-45deg, transparent 0 2px, rgba(0,0,0,.05) 2px 3px)`,
+  'fabric-3':`repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(255,255,255,.06) 1.5px 2.5px, transparent 2.5px 4px)`,
+  'fabric-4':`repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(0,0,0,.10) 1.5px 2.5px, transparent 2.5px 4px)`,
+  'fabric-5':`radial-gradient(circle at 30% 30%, rgba(0,0,0,.08) 0 1.5px, transparent 2px), radial-gradient(circle at 70% 60%, rgba(0,0,0,.06) 0 1.5px, transparent 2px), radial-gradient(circle at 50% 80%, rgba(0,0,0,.07) 0 1.5px, transparent 2px)`,
+  'fabric-6':`repeating-linear-gradient(0deg, transparent 0 4px, rgba(0,0,0,.10) 4px 5px, transparent 5px 12px)`,
+  'fabric-7':`repeating-linear-gradient(0deg, transparent 0 4px, rgba(255,255,255,.05) 4px 5px, transparent 5px 12px)`,
+  'fabric-8':`repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,.08) 3px 4px, transparent 4px 9px), repeating-linear-gradient(-45deg, transparent 0 3px, rgba(0,0,0,.06) 3px 4px, transparent 4px 9px)`,
+  'metal-1':`repeating-linear-gradient(90deg, rgba(255,235,180,.08) 0 1px, transparent 1px 4px)`,
+  'metal-2':`repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, transparent 1px 4px)`,
+  'metal-3':`repeating-linear-gradient(90deg, rgba(255,200,140,.06) 0 1px, transparent 1px 5px)`,
+  'metal-4':`repeating-linear-gradient(90deg, rgba(255,255,255,.30) 0 1px, transparent 1px 3px)`,
+};
+
+/* ---------- 3.  STATE  ------------------------------------------- */
+const state = {
+  roomIdx: 0,
+  zoneId:   null,
+  view:    'design',
+  selections: {}, /* { roomId_zoneId: { material, zone } } */
+};
+
+/* ---------- 4.  RENDERERS  --------------------------------------- */
+const el = (id)=>document.getElementById(id);
+const $  = (sel, ctx=document)=>ctx.querySelector(sel);
+const $$ = (sel, ctx=document)=>Array.from(ctx.querySelectorAll(sel));
+
+function buildRoomList(){
+  const list = el('roomList');
+  list.innerHTML = ROOMS.map((r,i)=>`
+    <li class="room-item ${i===state.roomIdx?'active':''}" data-idx="${i}">
+      <div class="room-thumb"><img src="${r.img}" alt=""></div>
+      <div class="room-meta">
+        <div class="room-name">${r.title}</div>
+        <div class="room-dim">${r.dim}</div>
+      </div>
+      <div class="room-index">${String(i+1).padStart(2,'0')}</div>
+    </li>`).join('');
+  $$('#roomList .room-item').forEach(li=>{
+    li.addEventListener('click', ()=>{
+      const i = +li.dataset.idx;
+      switchRoom(i);
+    });
+  });
+}
+
+function buildZones(){
+  const room = ROOMS[state.roomIdx];
+  el('zones').innerHTML = room.zones.map(z=>`
+    <div class="zone-poly" data-zone="${z.id}" style="clip-path:${z.poly};-webkit-clip-path:${z.poly}">
+      <div class="zone-tag">${z.label}</div>
+    </div>`).join('');
+  $$('#zones .zone-poly').forEach(poly=>{
+    poly.addEventListener('click', e=>{
+      e.stopPropagation();
+      selectZone(poly.dataset.zone);
+    });
+  });
+}
+
+function clearZoneSelection(){
+  $$('#zones .zone-poly').forEach(p=>p.classList.remove('selected'));
+}
+
+function applyMaterialOnZone(zoneId, material){
+  const room = ROOMS[state.roomIdx];
+  const zone = room.zones.find(z=>z.id===zoneId);
+  if(!zone) return;
+  const layer = el('materialLayer');
+  layer.innerHTML = '';
+  const fill = document.createElement('div');
+  fill.className = 'material-fill';
+  fill.dataset.zone = zoneId;
+  fill.style.clipPath = zone.poly;
+  fill.style.webkitClipPath = zone.poly;
+  /* base colour fill */
+  const grain = (material.grain || material.vein || '');
+  const gradient = PATTERNS[grain] || '';
+  fill.style.background = `${gradient}, ${material.hex}`;
+  layer.appendChild(fill);
+}
+
+function removeMaterialFromZone(zoneId){
+  const f = $(`.material-fill[data-zone="${zoneId}"]`);
+  if(f) f.remove();
+}
+
+function selectZone(zoneId){
+  state.zoneId = zoneId;
+  clearZoneSelection();
+  $(`#zones .zone-poly[data-zone="${zoneId}"]`)?.classList.add('selected');
+  const room = ROOMS[state.roomIdx];
+  const zone = room.zones.find(z=>z.id===zoneId);
+  el('panelTitle').innerHTML = `${zone.label.split(' ')[0]} <em>${zone.label.split(' ').slice(1).join(' ') || 'finish'}</em>`;
+  el('panelHint').textContent = `${MATERIALS[zone.cat].length} curated finishes available for ${zone.label.toLowerCase()}.`;
+  el('hintText').textContent = `Selected: ${zone.label}`;
+  renderTabs(zone.cat);
+  renderMaterials(zone.cat);
+}
+
+function renderTabs(activeCat){
+  const room = ROOMS[state.roomIdx];
+  /* tabs: zone category first, others secondary */
+  const tabs = el('tabs');
+  const allCats = ['wood','stone','paint','fabric','metal'];
+  const catList = [room.zones.find(z=>z.id===state.zoneId)?.cat || activeCat, ...allCats.filter(c=>c!==(room.zones.find(z=>z.id===state.zoneId)?.cat))];
+  tabs.innerHTML = catList.map(c=>`
+    <button class="tab ${c===(room.zones.find(z=>z.id===state.zoneId)?.cat)?'active':''}" data-cat="${c}">${CAT_LABEL[c]}</button>
+  `).join('');
+  $$('#tabs .tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      $$('#tabs .tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      renderMaterials(t.dataset.cat);
+    });
+  });
+}
+
+function renderMaterials(cat){
+  const body = el('panelBody');
+  const room = ROOMS[state.roomIdx];
+  const zone = room.zones.find(z=>z.id===state.zoneId);
+  /* If selected zone category differs from chosen tab, allow browse but show note */
+  const note = (zone.cat !== cat) ? `<div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--ink-2);opacity:.55;text-transform:uppercase;margin-bottom:10px">Cross-category preview · original is ${CAT_LABEL[zone.cat].toLowerCase()}</div>` : '';
+  const list = MATERIALS[cat];
+  body.innerHTML = note + `<div class="material-grid">${list.map(m=>{
+    const key = `${room.id}_${state.zoneId}`;
+    const selected = state.selections[key]?.material?.id === m.id;
+    return `
+      <button class="material ${selected?'selected':''}" data-id="${m.id}">
+        <div class="swatch" style="background:${PATTERNS[m.grain||m.vein||'']||''}, ${m.hex}"></div>
+        <div class="name">${m.name}</div>
+        <div class="tag">${m.tag} · ${m.price}</div>
+        <span class="check">✓</span>
+      </button>`;
+  }).join('')}</div>`;
+  $$('#panelBody .material').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const mat = MATERIALS[cat].find(m=>m.id===btn.dataset.id);
+      applyMaterial(mat);
+      toast(`Applied ${mat.name} to ${zone.label}`);
+    });
+  });
+}
+
+function applyMaterial(material){
+  const room = ROOMS[state.roomIdx];
+  const key  = `${room.id}_${state.zoneId}`;
+  state.selections[key] = { material, zone: state.zoneId, roomId: room.id };
+  applyMaterialOnZone(state.zoneId, material);
+  renderSummary();
+  renderMaterials($('#tabs .tab.active')?.dataset.cat || room.zones.find(z=>z.id===state.zoneId).cat);
+}
+
+function clearSelection(roomId, zoneId){
+  const key = `${roomId}_${zoneId}`;
+  delete state.selections[key];
+  if(state.roomIdx === ROOMS.findIndex(r=>r.id===roomId) && state.zoneId === zoneId){
+    removeMaterialFromZone(zoneId);
+  } else {
+    removeMaterialFromZone(zoneId);
+  }
+  renderSummary();
+  renderMaterials($('#tabs .tab.active')?.dataset.cat || ROOMS[state.roomIdx].zones.find(z=>z.id===state.zoneId).cat);
+}
+
+function renderSummary(){
+  const wrap = el('selectionListWrap');
+  const keys = Object.keys(state.selections);
+  if(keys.length === 0){
+    wrap.innerHTML = `<div class="selection-row" style="opacity:.55;font-style:italic">
+      <div></div><div class="label">No selections yet</div><div></div>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = keys.map(k=>{
+    const s = state.selections[k];
+    const room = ROOMS.find(r=>r.id===s.roomId);
+    const zone = room.zones.find(z=>z.id===s.zoneId);
+    return `
+      <div class="selection-row">
+        <div class="swatch-mini" style="background:${PATTERNS[s.material.grain||s.material.vein||'']||''}, ${s.material.hex}"></div>
+        <div><div class="label">${s.material.name}</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--ink-2);opacity:.55;text-transform:uppercase">${room.title} · ${zone.label}</div></div>
+        <button class="clear" data-key="${k}">Clear</button>
+      </div>`;
+  }).join('');
+  $$('#selectionListWrap .clear').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [rid,zid] = b.dataset.key.split('_');
+      clearSelection(rid, zid);
+    });
+  });
+}
+
+function switchRoom(i){
+  state.roomIdx = i;
+  state.zoneId = null;
+  el('baseImg').src = ROOMS[i].img;
+  el('roomTitle').textContent = ROOMS[i].title;
+  el('roomSub').textContent  = ROOMS[i].sub;
+  el('roomCrumb').textContent = `Space ${String(i+1).padStart(2,'0')} of ${String(ROOMS.length).padStart(2,'0')}`;
+  el('coordDisplay').textContent = `№ ${ROOMS[i].id.toUpperCase()} · ${ROOMS[i].dim}`;
+  buildZones();
+  el('materialLayer').innerHTML = '';
+  $$('#roomList .room-item').forEach(li=>li.classList.toggle('active', +li.dataset.idx===i));
+  /* restore applied materials for this room */
+  ROOMS[i].zones.forEach(z=>{
+    const sel = state.selections[`${ROOMS[i].id}_${z.id}`];
+    if(sel) applyMaterialOnZone(z.id, sel.material);
+  });
+  /* reset panel */
+  el('panelTitle').innerHTML = `Select a <em>surface</em>`;
+  el('panelHint').textContent = 'Click any surface in the rendering to explore materials curated for this property.';
+  el('hintText').textContent = 'Click any surface to preview a finish';
+  el('tabs').innerHTML = '';
+  el('panelBody').innerHTML = `
+    <div class="empty-state">
+      <div class="icon">⌖</div>
+      <div><strong>No surface selected.</strong><br>Click a floor, wall or piece of furniture in the rendering to preview finishes.</div>
+    </div>`;
+}
+
+function setView(v){
+  state.view = v;
+  $$('#viewToggle button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  const layer = el('materialLayer');
+  layer.style.opacity = (v==='design') ? '1' : '0';
+  el('baseImg').style.filter = (v==='before') ? 'saturate(1.05) contrast(1.02)' : 'none';
+}
+
+function toast(msg){
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- 5.  INIT  -------------------------------------------- */
+function init(){
+  buildRoomList();
+  switchRoom(0);
+
+  el('viewToggle').addEventListener('click', e=>{
+    if(e.target.tagName==='BUTTON') setView(e.target.dataset.view);
+  });
+  el('resetAll').addEventListener('click', ()=>{
+    state.selections = {};
+    el('materialLayer').innerHTML = '';
+    renderSummary();
+    const cat = ROOMS[state.roomIdx].zones.find(z=>z.id===state.zoneId)?.cat;
+    if(cat) renderMaterials(cat);
+    toast('Configuration reset');
+  });
+  el('saveConfig').addEventListener('click', ()=>{
+    const data = JSON.stringify(state.selections, null, 2);
+    try { localStorage.setItem('villa-serena-config', data); toast('Configuration saved'); }
+    catch(e){ toast('Saved in memory only (storage unavailable)'); }
+  });
+  el('scheduleView').addEventListener('click', ()=>{
+    toast('Viewing request sent · agent will be in touch');
+  });
+  el('exportPdf').addEventListener('click', ()=>{
+    window.print();
+  });
+  el('requestQuote').addEventListener('click', ()=>{
+    toast('Quote request sent for your selections');
+  });
+
+  /* keyboard: arrow keys move between rooms, esc clears */
+  document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown' || e.key==='ArrowRight'){
+      e.preventDefault();
+      switchRoom((state.roomIdx+1) % ROOMS.length);
+    }
+    if(e.key==='ArrowUp' || e.key==='ArrowLeft'){
+      e.preventDefault();
+      switchRoom((state.roomIdx-1+ROOMS.length) % ROOMS.length);
+    }
+    if(e.key==='Escape'){
+      clearZoneSelection();
+      state.zoneId = null;
+      el('panelBody').innerHTML = `
+        <div class="empty-state">
+          <div class="icon">⌖</div>
+          <div><strong>No surface selected.</strong><br>Click a floor, wall or piece of furniture in the rendering to preview finishes.</div>
+        </div>`;
+      el('tabs').innerHTML = '';
+      el('panelTitle').innerHTML = `Select a <em>surface</em>`;
+      el('panelHint').textContent = 'Click any surface in the rendering to explore materials curated for this property.';
+      el('hintText').textContent = 'Click any surface to preview a finish';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
